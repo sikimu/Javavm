@@ -8,9 +8,11 @@ import java.io.InputStream;
 public class ClassFileReader implements AutoCloseable {
     private static final int MAGIC_NUMBER = 0xCAFEBABE;
 
-    // TODO: マジックナンバー(0xCAFEBABE)を読み取り、クラスファイルが正しいフォーマットかを検証する
-    // - readMagic()メソッドを作成し、4バイトを読み取る
-    // - 読み取った値が0xCAFEBABEと一致しない場合は例外をスローする
+    // TODO: 定数プールの読み取りを実装する
+    // - readConstantPool()メソッドを作成
+    // - constant_pool_countを読み取る(2バイト)
+    // - constant_pool_count - 1個の定数プールエントリを読み取る
+    // - 各エントリはタグ(1バイト)と可変長のデータで構成される
     private final InputStream inputStream;
 
     public ClassFileReader(String path) throws ClassNotFoundException {
@@ -46,6 +48,66 @@ public class ClassFileReader implements AutoCloseable {
     }
 
     /**
+     * クラスファイルのバージョン情報を読み取り、検証します。
+     * @throws IOException 入出力エラーが発生した場合
+     * @throws ClassFormatError バージョン情報の読み取りに失敗した場合
+     */
+    public void readVersion() throws IOException {
+        int minorVersion = readBigEndianShort();
+        int majorVersion = readBigEndianShort();
+
+        // JDK 8以降をサポート（major_version >= 52）
+        if (majorVersion < 52) {
+            throw new ClassFormatError("サポートされていないクラスファイルバージョンです: " + majorVersion + "." + minorVersion);
+        }
+    }
+
+    /**
+     * 定数プールを読み取ります。
+     * @return 読み取った定数プールの配列。インデックス0は未使用でnullが格納されます。
+     * @throws IOException 入出力エラーが発生した場合
+     * @throws ClassFormatError 定数プールの読み取りに失敗した場合
+     */
+    public ConstantInfo[] readConstantPool() throws IOException {
+        int count = readBigEndianShort();
+        if (count <= 0) {
+            throw new ClassFormatError("定数プールカウントが不正です: " + count);
+        }
+
+        ConstantInfo[] constantPool = new ConstantInfo[count];
+        // インデックス0は未使用
+        constantPool[0] = null;
+
+        // インデックス1から定数プールエントリを読み取り
+        for (int i = 1; i < count; i++) {
+            int tag = inputStream.read();
+            if (tag < 0) {
+                throw new ClassFormatError("予期せぬファイルの終わりに到達しました");
+            }
+
+            switch (tag) {
+                case ConstantInfo.CONSTANT_Utf8:
+                    // 文字列の長さを読み取り
+                    int length = readBigEndianShort();
+                    // 文字列のバイト列を読み取り
+                    byte[] bytes = new byte[length];
+                    int n = inputStream.read(bytes);
+                    if (n != length) {
+                        throw new ClassFormatError("予期せぬファイルの終わりに到達しました");
+                    }
+                    // UTF-8文字列に変換
+                    constantPool[i] = new ConstantUtf8Info(new String(bytes));
+                    break;
+
+                default:
+                    throw new ClassFormatError("不正なタグ値です: " + tag);
+            }
+        }
+
+        return constantPool;
+    }
+
+    /**
      * 入力ストリームから4バイトを読み取り、ビッグエンディアンの整数として返します。
      * @return 読み取った4バイトから変換された整数
      * @throws IOException 入出力エラーが発生した場合
@@ -62,5 +124,22 @@ public class ClassFileReader implements AutoCloseable {
         }
 
         return (b1 << 24) | (b2 << 16) | (b3 << 8) | b4;
+    }
+
+    /**
+     * 入力ストリームから2バイトを読み取り、ビッグエンディアンの整数として返します。
+     * @return 読み取った2バイトから変換された整数
+     * @throws IOException 入出力エラーが発生した場合
+     * @throws ClassFormatError ファイルの末尾に達した場合
+     */
+    private int readBigEndianShort() throws IOException {
+        int b1 = inputStream.read();
+        int b2 = inputStream.read();
+
+        if (b1 < 0 || b2 < 0) {
+            throw new ClassFormatError("予期せぬファイルの終わりに到達しました");
+        }
+
+        return (b1 << 8) | b2;
     }
 }
