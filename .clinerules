@@ -1,0 +1,70 @@
+{
+    "development_flow": {
+        "enforce_tdd": true,
+        "steps": [
+            {
+                "name": "create_todo",
+                "required": true,
+                "description": "Create detailed TODO comments for the feature",
+                "validation": {
+                    "pattern": "^// TODO:",
+                    "files": ["**/*.java"]
+                }
+            },
+            {
+                "name": "create_test",
+                "required": true,
+                "description": "Create unit test for the feature",
+                "validation": {
+                    "files": ["**/test/**/*.java"],
+                    "naming": "*Test.java"
+                }
+            },
+            {
+                "name": "verify_red",
+                "required": true,
+                "description": "Ensure test fails (Red phase)",
+                "validation": {
+                    "command": "gradle test",
+                    "expect_failure": true
+                }
+            },
+            {
+                "name": "implement",
+                "required": true,
+                "description": "Implement the feature",
+                "validation": {
+                    "files": ["**/main/**/*.java"],
+                    "require_todo_resolution": true
+                }
+            },
+            {
+                "name": "verify_green",
+                "required": true,
+                "description": "Ensure all tests pass (Green phase)",
+                "validation": {
+                    "command": "gradle test",
+                    "expect_success": true
+                }
+            },
+            {
+                "name": "refactor",
+                "required": true,
+                "description": "Perform code refactoring while maintaining green tests",
+                "validation": {
+                    "command": "gradle test",
+                    "expect_success": true,
+                    "code_quality": {
+                        "check_style": true,
+                        "maintain_test_coverage": true
+                    }
+                }
+            }
+        ]
+    },
+    "workflow_enforcement": {
+        "prevent_skip_steps": true,
+        "require_step_order": true,
+        "allow_parallel_features": true
+    }
+}
