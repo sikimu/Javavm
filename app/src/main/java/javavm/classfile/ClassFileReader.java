@@ -2,11 +2,13 @@ package javavm.classfile;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 
 public class ClassFileReader implements AutoCloseable {
     private static final int MAGIC_NUMBER = 0xCAFEBABE;
+    private static final long MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
 
     // TODO: 定数プールの読み取りを実装する
     // - readConstantPool()メソッドを作成
@@ -19,6 +21,18 @@ public class ClassFileReader implements AutoCloseable {
         File file = new File(path);
         if (!file.exists()) {
             throw new ClassNotFoundException("クラスファイルが見つかりません: " + path);
+        }
+
+        if (file.isDirectory()) {
+            throw new ClassNotFoundException("ディレクトリはクラスファイルとして読み込めません: " + path);
+        }
+
+        if (file.length() == 0) {
+            throw new ClassFormatError("空のクラスファイルです: " + path);
+        }
+
+        if (file.length() > MAX_FILE_SIZE) {
+            throw new ClassFormatError("ファイルサイズが最大許容サイズを超えています: " + file.length() + " > " + MAX_FILE_SIZE + " bytes");
         }
 
         try {

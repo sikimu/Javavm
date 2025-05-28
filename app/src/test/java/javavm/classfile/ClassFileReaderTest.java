@@ -3,9 +3,12 @@ package javavm.classfile;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import static org.junit.jupiter.api.Assertions.*;
+import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.HashSet;
 
 class ClassFileReaderTest {
     @TempDir
@@ -35,6 +38,65 @@ class ClassFileReaderTest {
         assertTrue(
             exception.getMessage().contains(nonExistentPath),
             "例外メッセージにファイルパスが含まれている必要があります"
+        );
+    }
+
+    @Test
+    void testDirectoryAsClassFile() throws IOException {
+        // テストディレクトリを作成
+        Path testDir = tempDir.resolve("TestDir");
+        Files.createDirectory(testDir);
+
+        // テスト実行
+        ClassNotFoundException exception = assertThrows(
+            ClassNotFoundException.class,
+            () -> new ClassFileReader(testDir.toString()),
+            "ディレクトリが指定された場合はClassNotFoundExceptionをスローする必要があります"
+        );
+
+        assertTrue(
+            exception.getMessage().contains("ディレクトリはクラスファイルとして読み込めません"),
+            "例外メッセージにディレクトリであることを示す説明を含める必要があります"
+        );
+    }
+
+    @Test
+    void testEmptyClassFile() throws IOException {
+        // 0バイトのファイルを作成
+        Path tempFile = tempDir.resolve("Empty.class");
+        Files.write(tempFile, new byte[0]);
+
+        // テスト実行
+        ClassFormatError exception = assertThrows(
+            ClassFormatError.class,
+            () -> new ClassFileReader(tempFile.toString()),
+            "空のクラスファイルの場合はClassFormatErrorをスローする必要があります"
+        );
+
+        assertTrue(
+            exception.getMessage().contains("空のクラスファイルです"),
+            "例外メッセージにファイルが空である旨を含める必要があります"
+        );
+    }
+
+    @Test
+    void testFileTooLarge() throws IOException {
+        // 100MB + 1バイトのファイルを作成
+        Path tempFile = tempDir.resolve("TooLarge.class");
+        byte[] largeContent = new byte[100 * 1024 * 1024 + 1];
+        System.arraycopy(createValidMagicNumber(), 0, largeContent, 0, 4);
+        Files.write(tempFile, largeContent);
+
+        // テスト実行
+        ClassFormatError exception = assertThrows(
+            ClassFormatError.class,
+            () -> new ClassFileReader(tempFile.toString()),
+            "最大許容サイズを超えるファイルの場合はClassFormatErrorをスローする必要があります"
+        );
+
+        assertTrue(
+            exception.getMessage().contains("ファイルサイズが最大許容サイズを超えています"),
+            "例外メッセージにファイルサイズに関する説明を含める必要があります"
         );
     }
 
