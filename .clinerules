@@ -57,14 +57,7 @@
                     "code_quality": {
                         "check_style": true,
                         "maintain_test_coverage": true
-                    },
-                    "post_validation_actions": [
-                        {
-                            "type": "git_commit",
-                            "message": "[Auto] TDDサイクル完了 - ${timestamp}",
-                            "add_all": true
-                        }
-                    ]
+                    }
                 }
             }
         ]
