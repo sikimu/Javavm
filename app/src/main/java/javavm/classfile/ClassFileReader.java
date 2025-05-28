@@ -106,6 +106,12 @@ public class ClassFileReader implements AutoCloseable {
                     constantPool[i] = new ConstantFieldrefInfo(classIndex, nameAndTypeIndex);
                     break;
 
+                case ConstantInfo.CONSTANT_NameAndType:
+                    int nameIdx = readBigEndianShort();
+                    int descriptorIndex = readBigEndianShort();
+                    constantPool[i] = new ConstantNameAndTypeInfo(nameIdx, descriptorIndex);
+                    break;
+
                 case ConstantInfo.CONSTANT_Utf8:
                     // 文字列の長さを読み取り
                     int length = readBigEndianShort();

@@ -280,4 +280,39 @@ class ClassFileReaderTest {
             assertEquals(3, fieldrefInfo.getNameAndTypeIndex(), "name_and_type_indexが一致しません");
         }
     }
+
+    @Test
+    void testReadConstantNameAndType() throws Exception {
+        // マジックナンバー + バージョン情報 + 定数プール（NameAndType）
+        byte[] content = new byte[] {
+            // マジックナンバー
+            (byte)0xCA, (byte)0xFE, (byte)0xBA, (byte)0xBE,
+            // バージョン情報（Java 8）
+            0x00, 0x00, 0x00, 0x34,
+            // 定数プールカウント = 2
+            0x00, 0x02,
+            // #1: CONSTANT_NameAndType {name_index = 3, descriptor_index = 4}
+            0x0C, // tag = 12
+            0x00, 0x03, // name_index = 3
+            0x00, 0x04  // descriptor_index = 4
+        };
+
+        String validClassPath = createTestClassFile(content);
+
+        try (ClassFileReader reader = new ClassFileReader(validClassPath)) {
+            reader.readMagic();
+            reader.readVersion();
+            ConstantInfo[] constantPool = reader.readConstantPool();
+            
+            assertEquals(2, constantPool.length, "定数プールの長さは2であるべきです");
+            assertNull(constantPool[0], "定数プールの0番目の要素はnullであるべきです");
+            
+            assertTrue(constantPool[1] instanceof ConstantNameAndTypeInfo,
+                "定数プールの1番目の要素はConstantNameAndTypeInfoであるべきです");
+            
+            ConstantNameAndTypeInfo nameAndTypeInfo = (ConstantNameAndTypeInfo)constantPool[1];
+            assertEquals(3, nameAndTypeInfo.getNameIndex(), "name_indexが一致しません");
+            assertEquals(4, nameAndTypeInfo.getDescriptorIndex(), "descriptor_indexが一致しません");
+        }
+    }
 }
