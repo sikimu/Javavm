@@ -205,4 +205,79 @@ class ClassFileReaderTest {
             );
         }
     }
+
+    @Test
+    void testReadConstantClass() throws Exception {
+        // マジックナンバー + バージョン情報 + 定数プール（UTF-8 "Test" + Class）
+        byte[] content = new byte[] {
+            // マジックナンバー
+            (byte)0xCA, (byte)0xFE, (byte)0xBA, (byte)0xBE,
+            // バージョン情報（Java 8）
+            0x00, 0x00, 0x00, 0x34,
+            // 定数プールカウント = 3
+            0x00, 0x03,
+            // #1: CONSTANT_Utf8 {"Test"}
+            0x01, // tag = 1
+            0x00, 0x04, // length = 4
+            0x54, 0x65, 0x73, 0x74, // "Test"
+            // #2: CONSTANT_Class {name_index = 1}
+            0x07, // tag = 7
+            0x00, 0x01 // name_index = 1
+        };
+
+        String validClassPath = createTestClassFile(content);
+
+        try (ClassFileReader reader = new ClassFileReader(validClassPath)) {
+            reader.readMagic();
+            reader.readVersion();
+            ConstantInfo[] constantPool = reader.readConstantPool();
+            
+            assertEquals(3, constantPool.length, "定数プールの長さは3であるべきです");
+            assertNull(constantPool[0], "定数プールの0番目の要素はnullであるべきです");
+            
+            assertTrue(constantPool[1] instanceof ConstantUtf8Info,
+                "定数プールの1番目の要素はConstantUtf8Infoであるべきです");
+            
+            assertTrue(constantPool[2] instanceof ConstantClassInfo,
+                "定数プールの2番目の要素はConstantClassInfoであるべきです");
+            
+            ConstantClassInfo classInfo = (ConstantClassInfo)constantPool[2];
+            assertEquals(1, classInfo.getNameIndex(), "name_indexが一致しません");
+        }
+    }
+
+    @Test
+    void testReadConstantFieldref() throws Exception {
+        // マジックナンバー + バージョン情報 + 定数プール（Fieldref）
+        byte[] content = new byte[] {
+            // マジックナンバー
+            (byte)0xCA, (byte)0xFE, (byte)0xBA, (byte)0xBE,
+            // バージョン情報（Java 8）
+            0x00, 0x00, 0x00, 0x34,
+            // 定数プールカウント = 2
+            0x00, 0x02,
+            // #1: CONSTANT_Fieldref {class_index = 2, name_and_type_index = 3}
+            0x09, // tag = 9
+            0x00, 0x02, // class_index = 2
+            0x00, 0x03  // name_and_type_index = 3
+        };
+
+        String validClassPath = createTestClassFile(content);
+
+        try (ClassFileReader reader = new ClassFileReader(validClassPath)) {
+            reader.readMagic();
+            reader.readVersion();
+            ConstantInfo[] constantPool = reader.readConstantPool();
+            
+            assertEquals(2, constantPool.length, "定数プールの長さは2であるべきです");
+            assertNull(constantPool[0], "定数プールの0番目の要素はnullであるべきです");
+            
+            assertTrue(constantPool[1] instanceof ConstantFieldrefInfo,
+                "定数プールの1番目の要素はConstantFieldrefInfoであるべきです");
+            
+            ConstantFieldrefInfo fieldrefInfo = (ConstantFieldrefInfo)constantPool[1];
+            assertEquals(2, fieldrefInfo.getClassIndex(), "class_indexが一致しません");
+            assertEquals(3, fieldrefInfo.getNameAndTypeIndex(), "name_and_type_indexが一致しません");
+        }
+    }
 }

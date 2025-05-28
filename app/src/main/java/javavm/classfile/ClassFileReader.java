@@ -85,7 +85,27 @@ public class ClassFileReader implements AutoCloseable {
                 throw new ClassFormatError("予期せぬファイルの終わりに到達しました");
             }
 
+            // TODO: CONSTANT_Class(7)の実装
+            // - name_indexを読み取る(2バイト)
+            // - ConstantClassInfoクラスを作成して格納
+
+            // TODO: CONSTANT_Fieldref(9)の実装
+            // - class_indexを読み取る(2バイト)
+            // - name_and_type_indexを読み取る(2バイト)
+            // - ConstantFieldrefInfoクラスを作成して格納
+
             switch (tag) {
+                case ConstantInfo.CONSTANT_Class:
+                    int nameIndex = readBigEndianShort();
+                    constantPool[i] = new ConstantClassInfo(nameIndex);
+                    break;
+
+                case ConstantInfo.CONSTANT_Fieldref:
+                    int classIndex = readBigEndianShort();
+                    int nameAndTypeIndex = readBigEndianShort();
+                    constantPool[i] = new ConstantFieldrefInfo(classIndex, nameAndTypeIndex);
+                    break;
+
                 case ConstantInfo.CONSTANT_Utf8:
                     // 文字列の長さを読み取り
                     int length = readBigEndianShort();
